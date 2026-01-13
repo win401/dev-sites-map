@@ -1,6 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
+import Header from "./Header";
+import SearchBar from "./SearchBar";
+import PathDrawingControls from "./PathDrawingControls";
+import Message from "./Message";
 
 declare global {
   interface Window {
@@ -282,129 +286,42 @@ export default function KakaoMap() {
     };
   }, []);
 
+  const handleToggleDrawing = useCallback(() => {
+    const newState = !isDrawing;
+    isDrawingRef.current = newState;
+    setIsDrawing(newState);
+    setMsg(
+      newState
+        ? "경로 그리기 모드: 지도를 클릭하여 경로를 그리세요 (더블클릭으로 종료)"
+        : "경로 그리기 종료"
+    );
+  }, [isDrawing]);
+
+  const handleClearPath = useCallback(() => {
+    if (polylineRef.current) {
+      polylineRef.current.setMap(null);
+      polylineRef.current = null;
+    }
+    pathCoordsRef.current = [];
+    setHasPath(false);
+    setMsg("경로 초기화 완료");
+  }, []);
+
   return (
     <div style={{ padding: 16, maxWidth: "1400px", margin: "0 auto" }}>
-      {/* 헤더 */}
-      <div style={{ marginBottom: 16 }}>
-        <h1
-          style={{
-            fontSize: 24,
-            fontWeight: "bold",
-            marginBottom: 4,
-            color: "#333",
-          }}
-        >
-          개발 공사 위치 지도
-        </h1>
-        <p style={{ fontSize: 14, color: "#666" }}>
-          지역을 검색하면 주변의 현재 개발 공사중인 위치를 자동으로 표시합니다
-        </p>
-      </div>
-
-      {/* 검색 UI */}
-      <div style={{ marginBottom: 12, display: "flex", gap: 8 }}>
-        <input
-          value={keyword}
-          onChange={(e) => setKeyword(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              searchPlace();
-            }
-          }}
-          placeholder="지역 검색 (예: 서울 강남구, 부산 해운대구)"
-          style={{
-            flex: 1,
-            padding: "10px 12px",
-            border: "1px solid #ddd",
-            borderRadius: 8,
-            fontSize: 14,
-          }}
-        />
-        <button
-          onClick={searchPlace}
-          style={{
-            padding: "10px 20px",
-            backgroundColor: "#3182f6",
-            color: "white",
-            border: "none",
-            borderRadius: 8,
-            cursor: "pointer",
-            fontSize: 14,
-            fontWeight: 500,
-          }}
-        >
-          검색
-        </button>
-      </div>
-
-      {/* 경로 그리기 UI */}
-      <div style={{ marginBottom: 12, display: "flex", gap: 8 }}>
-        <button
-          onClick={() => {
-            const newState = !isDrawing;
-            isDrawingRef.current = newState;
-            setIsDrawing(newState);
-            setMsg(
-              newState
-                ? "경로 그리기 모드: 지도를 클릭하여 경로를 그리세요 (더블클릭으로 종료)"
-                : "경로 그리기 종료"
-            );
-          }}
-          style={{
-            padding: "10px 20px",
-            backgroundColor: isDrawing ? "#ef4444" : "#10b981",
-            color: "white",
-            border: "none",
-            borderRadius: 8,
-            cursor: "pointer",
-            fontSize: 14,
-            fontWeight: 500,
-          }}
-        >
-          {isDrawing ? "그리기 종료" : "그리기 시작"}
-        </button>
-        <button
-          onClick={() => {
-            if (polylineRef.current) {
-              polylineRef.current.setMap(null);
-              polylineRef.current = null;
-            }
-            pathCoordsRef.current = [];
-            setHasPath(false);
-            setMsg("경로 초기화 완료");
-          }}
-          disabled={!hasPath}
-          style={{
-            padding: "10px 20px",
-            backgroundColor: hasPath ? "#6b7280" : "#d1d5db",
-            color: "white",
-            border: "none",
-            borderRadius: 8,
-            cursor: hasPath ? "pointer" : "not-allowed",
-            fontSize: 14,
-            fontWeight: 500,
-          }}
-        >
-          초기화
-        </button>
-      </div>
-
-      {msg && (
-        <div
-          style={{
-            marginBottom: 12,
-            padding: "8px 12px",
-            backgroundColor: "#f0f9ff",
-            border: "1px solid #bae6fd",
-            borderRadius: 6,
-            fontSize: 13,
-            color: "#0369a1",
-          }}
-        >
-          {msg}
-        </div>
-      )}
-
+      <Header />
+      <SearchBar
+        keyword={keyword}
+        onKeywordChange={setKeyword}
+        onSearch={searchPlace}
+      />
+      <PathDrawingControls
+        isDrawing={isDrawing}
+        hasPath={hasPath}
+        onToggleDrawing={handleToggleDrawing}
+        onClearPath={handleClearPath}
+      />
+      <Message message={msg} />
       <div
         ref={mapRef}
         style={{
