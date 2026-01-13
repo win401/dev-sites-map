@@ -30,6 +30,13 @@ export default function KakaoMap() {
   const [keyword, setKeyword] = useState("");
   const syncSitesRef = useRef<(() => Promise<void>) | null>(null);
 
+  // 경로 그리기 관련
+  const [isDrawing, setIsDrawing] = useState(false);
+  const [hasPath, setHasPath] = useState(false);
+  const isDrawingRef = useRef(false);
+  const pathCoordsRef = useRef<any[]>([]);
+  const polylineRef = useRef<any>(null);
+
   // ✅ 장소 검색 → 지도 이동 → 주변 개발 공사 위치 자동 표시
   const searchPlace = useCallback(() => {
     if (!keyword.trim()) return;
@@ -213,6 +220,43 @@ export default function KakaoMap() {
         // 지도 움직임/줌 변경 시 자동 갱신
         window.kakao.maps.event.addListener(map, "dragend", scheduleSync);
         window.kakao.maps.event.addListener(map, "zoom_changed", scheduleSync);
+
+        // ✅ 경로 그리기: 지도 클릭 이벤트
+        const handleMapClick = (mouseEvent: any) => {
+          if (!isDrawingRef.current) return;
+
+          const latlng = mouseEvent.latLng;
+          pathCoordsRef.current.push(latlng);
+
+          // Polyline 갱신
+          if (polylineRef.current) {
+            polylineRef.current.setMap(null);
+          }
+
+          if (pathCoordsRef.current.length > 0) {
+            polylineRef.current = new window.kakao.maps.Polyline({
+              path: pathCoordsRef.current,
+              strokeWeight: 3,
+              strokeColor: "#FF0000",
+              strokeOpacity: 0.8,
+              strokeStyle: "solid",
+            });
+            polylineRef.current.setMap(map);
+            setHasPath(true);
+          }
+        };
+
+        // ✅ 경로 그리기: 더블클릭으로 종료
+        const handleMapDblClick = () => {
+          if (isDrawingRef.current) {
+            isDrawingRef.current = false;
+            setIsDrawing(false);
+            setMsg("경로 그리기 종료");
+          }
+        };
+
+        window.kakao.maps.event.addListener(map, "click", handleMapClick);
+        window.kakao.maps.event.addListener(map, "dblclick", handleMapDblClick);
       });
     };
 
@@ -229,6 +273,12 @@ export default function KakaoMap() {
       for (const infowindow of infowindowsRef.current.values())
         infowindow.close();
       infowindowsRef.current.clear();
+
+      if (polylineRef.current) {
+        polylineRef.current.setMap(null);
+        polylineRef.current = null;
+      }
+      pathCoordsRef.current = [];
     };
   }, []);
 
@@ -284,6 +334,58 @@ export default function KakaoMap() {
           }}
         >
           검색
+        </button>
+      </div>
+
+      {/* 경로 그리기 UI */}
+      <div style={{ marginBottom: 12, display: "flex", gap: 8 }}>
+        <button
+          onClick={() => {
+            const newState = !isDrawing;
+            isDrawingRef.current = newState;
+            setIsDrawing(newState);
+            setMsg(
+              newState
+                ? "경로 그리기 모드: 지도를 클릭하여 경로를 그리세요 (더블클릭으로 종료)"
+                : "경로 그리기 종료"
+            );
+          }}
+          style={{
+            padding: "10px 20px",
+            backgroundColor: isDrawing ? "#ef4444" : "#10b981",
+            color: "white",
+            border: "none",
+            borderRadius: 8,
+            cursor: "pointer",
+            fontSize: 14,
+            fontWeight: 500,
+          }}
+        >
+          {isDrawing ? "그리기 종료" : "그리기 시작"}
+        </button>
+        <button
+          onClick={() => {
+            if (polylineRef.current) {
+              polylineRef.current.setMap(null);
+              polylineRef.current = null;
+            }
+            pathCoordsRef.current = [];
+            setHasPath(false);
+            setMsg("경로 초기화 완료");
+          }}
+          disabled={!hasPath}
+          style={{
+            padding: "10px 20px",
+            backgroundColor: hasPath ? "#6b7280" : "#d1d5db",
+            color: "white",
+            border: "none",
+            borderRadius: 8,
+            cursor: hasPath ? "pointer" : "not-allowed",
+            fontSize: 14,
+            fontWeight: 500,
+          }}
+        >
+          초기화
         </button>
       </div>
 
